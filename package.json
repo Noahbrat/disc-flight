@@ -1,0 +1,44 @@
+{
+  "name": "disc-flight",
+  "version": "0.1.0",
+  "description": "Disc golf flight path visualization engine. Takes flight numbers (speed/glide/turn/fade) and outputs beautiful flight path graphics.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "disc-golf",
+    "flight-path",
+    "flight-numbers",
+    "visualization",
+    "svg"
+  ],
+  "author": "Noahbrat",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Noahbrat/disc-flight.git"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^3.0.0"
+  }
+}
