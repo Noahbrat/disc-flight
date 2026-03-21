@@ -4,6 +4,10 @@ Disc golf flight path visualization engine. Takes flight numbers (speed/glide/tu
 
 Zero dependencies. Works in Node.js and the browser. Dual ESM + CJS builds.
 
+<p align="center">
+  <img src="demo.svg" alt="Flight path comparison: Destroyer, Firebird, Leopard, Buzzz, Berg" width="500" />
+</p>
+
 ## Install
 
 ```bash
