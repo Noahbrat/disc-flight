@@ -47,39 +47,46 @@ export function calculateFlightPath(input: FlightInput): FlightPath {
   // Non-linear fade: fade 1 is gentle, fade 4 is dramatic
   const fadeMag = Math.pow(fade, 1.5) * armFadeMult * mirror * lateralBase
 
+  // --- Fade onset ---
+  // Fade begins partway through the turn phase as disc loses speed.
+  // Not as late as turnEnd (too abrupt) but not before straightEnd (kills the turn).
+  // Midpoint of straight→turnEnd gives a sweeping arc without eating the turn.
+  const fadeStart = straightEnd + (turnEnd - straightEnd) * 0.35
+
   const points: Point[] = []
 
   for (let i = 0; i <= SAMPLES; i++) {
     const t = i / SAMPLES
     const along = t * distance
 
-    let lateral = 0
-
+    // --- Turn component ---
+    // Turn builds during mid-flight as disc is at high speed
+    let turnLateral = 0
     if (t <= straightEnd) {
-      // Phase 1: Straight flight — almost no lateral movement
-      // Tiny hint of turn begins near the end of this phase
       const p = t / straightEnd
-      // Quartic ease-in: stays near zero for most of the phase, then barely starts
-      lateral = turnMag * p * p * p * p * 0.08
+      turnLateral = turnMag * p * p * p * p * 0.08
     } else if (t <= turnEnd) {
-      // Phase 2: Turn develops as disc slows from high speed
-      // This is where understable discs drift right (RHBH)
       const lateralAtStraightEnd = turnMag * 0.08
       const p = (t - straightEnd) / (turnEnd - straightEnd)
-      // Smooth acceleration of turn — starts gentle, builds
       const eased = p * p * (3 - 2 * p) // smoothstep
-      lateral = lateralAtStraightEnd + turnMag * eased * 0.92
+      turnLateral = lateralAtStraightEnd + turnMag * eased * 0.92
     } else {
-      // Phase 3: Fade — disc is slow, gyroscopic precession takes over
-      // All discs fade left (RHBH), intensity based on fade number
-      const lateralAtTurnEnd = turnMag
+      // Turn contribution holds and slowly decays after peak
       const p = (t - turnEnd) / (1 - turnEnd)
-      // Fade is aggressive at the end — cubic ease-in for that hook shape
-      const fadeEffect = fadeMag * p * p * p
-      // Tiny continued turn momentum that quickly dies
-      const turnDecay = turnMag * 0.08 * (1 - p)
-      lateral = lateralAtTurnEnd + turnDecay - fadeEffect
+      turnLateral = turnMag * (1 - p * 0.1)
     }
+
+    // --- Fade component ---
+    // Fade is a separate, overlapping force that builds gradually from fadeStart.
+    // This creates the long sweeping arc visible in reference charts.
+    let fadeLateral = 0
+    if (t > fadeStart) {
+      const p = (t - fadeStart) / (1 - fadeStart)
+      // p^2.5: between quadratic (too gradual) and cubic (too sharp)
+      fadeLateral = fadeMag * Math.pow(p, 2.5)
+    }
+
+    const lateral = turnLateral - fadeLateral
 
     points.push({ x: lateral, y: along })
   }
