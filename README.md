@@ -42,6 +42,29 @@ const comparison = renderSvg([
 ], { width: 500, height: 700 })
 ```
 
+## CLI
+
+Generate flight path SVGs from the command line:
+
+```bash
+# Single disc to file
+disc-flight render --discs "Destroyer:12/5/-1/3:red" --output destroyer.svg
+
+# Multiple discs with grid to stdout
+disc-flight render --discs "Destroyer:12/5/-1/3:red,Buzzz:5/4/-1/1:green" --grid
+
+# All options
+disc-flight render --discs "<spec>" \
+  --output file.svg \
+  --width 800 --height 600 \
+  --grid --hand lhbh --arm-speed fast \
+  --no-labels --no-landing --no-fairway
+```
+
+**Disc spec format:** `Label:Speed/Glide/Turn/Fade:Color` — label and color are optional, comma-separated for multiple discs.
+
+Run `disc-flight --help` for full usage.
+
 ## API
 
 ### `calculateFlightPath(input: FlightInput): FlightPath`
@@ -67,6 +90,17 @@ Converts flight numbers to an array of coordinates.
 | `points` | `Point[]` | Array of `{ x, y }` coordinates (feet) |
 | `distance` | `number` | Total flight distance in feet |
 | `landingPoint` | `Point` | Final resting position |
+
+### `parseDiscSpec(spec: string): FlightInput[]`
+
+Parses a disc spec string into `FlightInput` objects. Useful for building your own tooling on top of disc-flight.
+
+```typescript
+import { parseDiscSpec, renderSvg } from 'disc-flight'
+
+const discs = parseDiscSpec('Destroyer:12/5/-1/3:red,Buzzz:5/4/-1/1:green')
+const svg = renderSvg(discs, { showGrid: true })
+```
 
 ### `renderSvg(discs, options?): string`
 

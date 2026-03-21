@@ -1,5 +1,6 @@
 export { calculateFlightPath } from './flight'
 export { renderSvg } from './render'
+export { parseDiscSpec } from './parse'
 export type {
   FlightNumbers,
   FlightInput,
