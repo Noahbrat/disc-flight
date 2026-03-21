@@ -13,9 +13,10 @@ export function calculateFlightPath(input: FlightInput): FlightPath {
   const armFadeMult = armSpeed === 'slow' ? 1.3 : armSpeed === 'fast' ? 0.8 : 1.0
 
   // --- Distance model ---
+  const armDistMult = armSpeed === 'slow' ? 0.82 : armSpeed === 'fast' ? 1.1 : 1.0
   const baseDistance = 150 + speed * 18 + Math.sqrt(speed) * 12
   const glideBonus = glide * 10 * (0.5 + speed * 0.04)
-  const distance = baseDistance + glideBonus
+  const distance = (baseDistance + glideBonus) * armDistMult
 
   // --- Lateral movement scaling ---
   const lateralBase = distance * 0.028

@@ -25,7 +25,7 @@ Disc golf flight path visualization engine. Takes flight numbers (speed/glide/tu
 ## What Exists
 
 - **`src/types.ts`** — Core interfaces: FlightInput, FlightPath, RenderOptions, Point, Hand, ArmSpeed
-- **`src/flight.ts`** — `calculateFlightPath()` — velocity-integrated flight model. Models lateral velocity as a continuous function (cubic turn rise + quadratic decay, quadratic fade rise) and integrates to get position. No phase boundaries, mathematically smooth everywhere. Supports arm speed modifier and handedness (RHBH/LHBH/RHFH/LHFH)
+- **`src/flight.ts`** — `calculateFlightPath()` — velocity-integrated flight model. Models lateral velocity as a continuous function (cubic turn rise + quadratic decay, quadratic fade rise) and integrates to get position. No phase boundaries, mathematically smooth everywhere. Supports arm speed modifier (affects distance, turn, and fade) and handedness (RHBH/LHBH/RHFH/LHFH)
 - **`src/render.ts`** — `renderSvg()` — takes one or more FlightInput objects, renders a top-down fairway SVG with Catmull-Rom smooth curves, landing zone X marks, labels, tee pad marker, and optional distance grid. Uses uniform X/Y scaling so proportions are honest. Labels and landing zones render after all flight paths so they're always on top.
 - **`src/__tests__/flight.test.ts`** — 5 invariant tests all passing: turn-0 stays straight, speed=distance, fade direction, turn magnitude, LHBH mirrors RHBH
 

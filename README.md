@@ -110,11 +110,11 @@ All examples assume RHBH (right-hand backhand). The `hand` option mirrors the fl
 
 ## Arm Speed
 
-The `armSpeed` modifier affects how much turn is expressed:
+The `armSpeed` modifier affects distance, turn, and fade:
 
-- `'slow'` — less turn (disc acts more overstable), more effective fade
-- `'normal'` — manufacturer flight numbers as-is
-- `'fast'` — more turn expressed, slightly less fade
+- `'slow'` — 82% distance, 50% turn, 130% fade. Disc flies shorter and more overstable.
+- `'normal'` — baseline. Manufacturer flight numbers as-is.
+- `'fast'` — 110% distance, 140% turn, 80% fade. Disc flies farther and more understable.
 
 ## License
 
