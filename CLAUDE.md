@@ -25,19 +25,28 @@ Disc golf flight path visualization engine. Takes flight numbers (speed/glide/tu
 ## What Exists
 
 - **`src/types.ts`** — Core interfaces: FlightInput, FlightPath, RenderOptions, Point, Hand, ArmSpeed
-- **`src/flight.ts`** — `calculateFlightPath()` — three-phase model (straight → turn → fade) that converts flight numbers to coordinate arrays. Supports arm speed modifier and handedness (RHBH/LHBH/RHFH/LHFH)
-- **`src/render.ts`** — `renderSvg()` — takes one or more FlightInput objects, renders a top-down fairway SVG with flight paths, landing zone X marks, labels, and a tee pad marker
+- **`src/flight.ts`** — `calculateFlightPath()` — velocity-integrated flight model. Models lateral velocity as a continuous function (cubic turn rise + quadratic decay, quadratic fade rise) and integrates to get position. No phase boundaries, mathematically smooth everywhere. Supports arm speed modifier and handedness (RHBH/LHBH/RHFH/LHFH)
+- **`src/render.ts`** — `renderSvg()` — takes one or more FlightInput objects, renders a top-down fairway SVG with Catmull-Rom smooth curves, landing zone X marks, labels, and a tee pad marker. Uses uniform X/Y scaling so proportions are honest.
 - **`src/__tests__/flight.test.ts`** — 5 invariant tests all passing: turn-0 stays straight, speed=distance, fade direction, turn magnitude, LHBH mirrors RHBH
+
+## Flight Model Details
+
+The model was tuned against DG Puttheads reference charts for benchmark discs (Destroyer, Buzzz, Firebird, Leopard, Berg). Key design decisions:
+
+- **Velocity-based, not position-based** — lateral velocity is modeled as one continuous function and integrated to get position. This guarantees smooth curves with no kinks or bumps at phase boundaries.
+- **Turn velocity:** cubic rise (`p³`) to peak, then quadratic decay. Very gradual start (looks straight), accelerates mid-flight, naturally decelerates. Peak around 55-67% of flight depending on speed.
+- **Fade velocity:** quadratic ease-in (`p²`) over a compressed window (last ~18-22%). Always accelerating — the curve gets steeper as the disc slows to a stop.
+- **Coast emerges naturally** from the velocity decay between turn and fade — no explicit coast phase needed.
+- **Non-linear turn/fade scaling:** `abs(value)^1.5` so turn -1 is subtle, turn -4 is dramatic. Fade has a 1.8x multiplier since it's compressed into a shorter window.
+- **Distance model:** feet-based. Berg ~185ft, Buzzz ~295ft, Leopard ~324ft, Firebird ~374ft, Destroyer ~457ft.
 
 ## What's Next (Phase 1 completion)
 
-The core math and basic SVG rendering work but need tuning and polish:
-
-1. **Tune flight math against benchmark discs** — Destroyer (12/5/-1/3), Buzzz (5/4/-1/1), Firebird (9/3/0/4), Leopard (6/5/-2/1), Berg (1/1/0/2). Visually compare output against DG Puttheads and DiscGolfFlightCharts.com
-2. **CLI tool** — `disc-flight render --discs "Destroyer:12/5/-1/3:red,Buzzz:5/4/-1/1:green" --output comparison.svg` for quick blog image generation
-3. **SVG styling polish** — better fairway backgrounds, distance markers, flight number labels
-4. **PNG export** — Sharp for Node.js side
-5. **Side-profile view** — altitude arc showing disc height through the flight (differentiator vs competitors)
+1. **CLI tool** — `disc-flight render --discs "Destroyer:12/5/-1/3:red,Buzzz:5/4/-1/1:green" --output comparison.svg` for quick blog image generation
+2. **SVG styling polish** — better fairway backgrounds, distance markers, flight number labels
+3. **PNG export** — Sharp for Node.js side
+4. **Side-profile view** — altitude arc showing disc height through the flight (differentiator vs competitors)
+5. **More benchmark validation** — test against more disc molds, edge cases (very understable, very overstable)
 
 ## Longer Term
 
