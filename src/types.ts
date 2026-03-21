@@ -34,4 +34,5 @@ export interface RenderOptions {
   showFairway?: boolean
   showLabels?: boolean
   showLandingZone?: boolean
+  showGrid?: boolean
 }

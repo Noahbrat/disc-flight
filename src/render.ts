@@ -51,6 +51,7 @@ const DEFAULTS: Required<RenderOptions> = {
   showFairway: true,
   showLabels: true,
   showLandingZone: true,
+  showGrid: false,
 }
 
 export function renderSvg(
@@ -103,6 +104,44 @@ export function renderSvg(
     svg += `  <rect width="${opts.width}" height="${opts.height}" fill="#1a472a" rx="8" />\n`
   }
 
+  // Grid
+  if (opts.showGrid) {
+    // Pick a nice grid interval based on max distance
+    const gridIntervals = [25, 50, 100, 150, 200]
+    let gridStep = 50
+    for (const interval of gridIntervals) {
+      const lineCount = Math.floor(maxY / interval)
+      if (lineCount >= 3 && lineCount <= 10) {
+        gridStep = interval
+        break
+      }
+    }
+
+    const gridColor = opts.showFairway ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'
+    const labelColor = opts.showFairway ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'
+
+    // Horizontal distance lines
+    for (let dist = 0; dist <= maxY; dist += gridStep) {
+      const y = toSvgY(dist)
+      svg += `  <line x1="${opts.padding}" y1="${y}" x2="${opts.width - opts.padding}" y2="${y}" stroke="${gridColor}" stroke-width="0.75" />\n`
+      svg += `  <text x="${opts.padding - 4}" y="${y + 4}" fill="${labelColor}" font-family="sans-serif" font-size="10" text-anchor="end">${dist}ft</text>\n`
+    }
+
+    // Vertical gridlines — use same spacing in feet, centered on the tee
+    const centerX = 0
+    for (let xFt = -gridStep; toSvgX(centerX + xFt) >= opts.padding; xFt -= gridStep) {
+      const x = toSvgX(centerX + xFt)
+      svg += `  <line x1="${x}" y1="${opts.padding}" x2="${x}" y2="${opts.height - opts.padding}" stroke="${gridColor}" stroke-width="0.75" />\n`
+    }
+    for (let xFt = gridStep; toSvgX(centerX + xFt) <= opts.width - opts.padding; xFt += gridStep) {
+      const x = toSvgX(centerX + xFt)
+      svg += `  <line x1="${x}" y1="${opts.padding}" x2="${x}" y2="${opts.height - opts.padding}" stroke="${gridColor}" stroke-width="0.75" />\n`
+    }
+    // Center vertical line (tee line)
+    const cx = toSvgX(0)
+    svg += `  <line x1="${cx}" y1="${opts.padding}" x2="${cx}" y2="${opts.height - opts.padding}" stroke="${gridColor}" stroke-width="0.75" />\n`
+  }
+
   // Tee pad marker
   const teeX = toSvgX(0)
   const teeY = toSvgY(0)
@@ -118,8 +157,12 @@ export function renderSvg(
     const d = pointsToSmoothPath(svgPts)
 
     svg += `  <path d="${d}" fill="none" stroke="${color}" stroke-width="${lineWidth}" stroke-linecap="round" stroke-linejoin="round" />\n`
+  }
 
-    // Landing zone
+  // Landing zones and labels rendered after all paths so they're always on top
+  for (const { input, path } of paths) {
+    const color = input.color ?? '#ffffff'
+
     if (opts.showLandingZone) {
       const lx = toSvgX(path.landingPoint.x)
       const ly = toSvgY(path.landingPoint.y)
@@ -127,7 +170,6 @@ export function renderSvg(
       svg += `  <line x1="${lx + 4}" y1="${ly - 4}" x2="${lx - 4}" y2="${ly + 4}" stroke="${color}" stroke-width="2" />\n`
     }
 
-    // Label
     if (opts.showLabels && input.label) {
       const lx = toSvgX(path.landingPoint.x)
       const ly = toSvgY(path.landingPoint.y) - 10

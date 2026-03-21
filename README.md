@@ -77,6 +77,7 @@ Renders one or more flight paths as an SVG string.
 | `showFairway` | `boolean` | true | Dark green background |
 | `showLabels` | `boolean` | true | Disc name labels at landing |
 | `showLandingZone` | `boolean` | true | X marks at landing positions |
+| `showGrid` | `boolean` | false | Distance grid with labeled axes |
 
 ## How the Math Works
 

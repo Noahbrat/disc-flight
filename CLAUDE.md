@@ -26,7 +26,7 @@ Disc golf flight path visualization engine. Takes flight numbers (speed/glide/tu
 
 - **`src/types.ts`** — Core interfaces: FlightInput, FlightPath, RenderOptions, Point, Hand, ArmSpeed
 - **`src/flight.ts`** — `calculateFlightPath()` — velocity-integrated flight model. Models lateral velocity as a continuous function (cubic turn rise + quadratic decay, quadratic fade rise) and integrates to get position. No phase boundaries, mathematically smooth everywhere. Supports arm speed modifier and handedness (RHBH/LHBH/RHFH/LHFH)
-- **`src/render.ts`** — `renderSvg()` — takes one or more FlightInput objects, renders a top-down fairway SVG with Catmull-Rom smooth curves, landing zone X marks, labels, and a tee pad marker. Uses uniform X/Y scaling so proportions are honest.
+- **`src/render.ts`** — `renderSvg()` — takes one or more FlightInput objects, renders a top-down fairway SVG with Catmull-Rom smooth curves, landing zone X marks, labels, tee pad marker, and optional distance grid. Uses uniform X/Y scaling so proportions are honest. Labels and landing zones render after all flight paths so they're always on top.
 - **`src/__tests__/flight.test.ts`** — 5 invariant tests all passing: turn-0 stays straight, speed=distance, fade direction, turn magnitude, LHBH mirrors RHBH
 
 ## Flight Model Details
@@ -43,7 +43,7 @@ The model was tuned against DG Puttheads reference charts for benchmark discs (D
 ## What's Next (Phase 1 completion)
 
 1. **CLI tool** — `disc-flight render --discs "Destroyer:12/5/-1/3:red,Buzzz:5/4/-1/1:green" --output comparison.svg` for quick blog image generation
-2. **SVG styling polish** — better fairway backgrounds, distance markers, flight number labels
+2. **SVG styling polish** — better fairway backgrounds, flight number labels (distance grid/markers done via `showGrid`)
 3. **PNG export** — Sharp for Node.js side
 4. **Side-profile view** — altitude arc showing disc height through the flight (differentiator vs competitors)
 5. **More benchmark validation** — test against more disc molds, edge cases (very understable, very overstable)
