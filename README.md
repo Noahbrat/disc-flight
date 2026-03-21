@@ -122,4 +122,4 @@ The `armSpeed` modifier affects distance, turn, and fade:
 
 ## License
 
-MIT
+[MIT](LICENSE)
