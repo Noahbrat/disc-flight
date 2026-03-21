@@ -1,5 +1,48 @@
-import type { FlightInput, FlightPath, RenderOptions } from './types'
+import type { FlightInput, RenderOptions } from './types'
 import { calculateFlightPath } from './flight'
+
+interface SvgPoint {
+  x: number
+  y: number
+}
+
+/** Convert an array of points to a smooth SVG path using Catmull-Rom spline conversion */
+function pointsToSmoothPath(pts: SvgPoint[]): string {
+  if (pts.length < 2) return ''
+  if (pts.length === 2) {
+    return `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)} L${pts[1].x.toFixed(1)},${pts[1].y.toFixed(1)}`
+  }
+
+  // Sample every Nth point to reduce path complexity while keeping smoothness
+  const step = Math.max(1, Math.floor(pts.length / 50))
+  const sampled: SvgPoint[] = []
+  for (let i = 0; i < pts.length; i += step) {
+    sampled.push(pts[i])
+  }
+  // Always include the last point
+  if (sampled[sampled.length - 1] !== pts[pts.length - 1]) {
+    sampled.push(pts[pts.length - 1])
+  }
+
+  let d = `M${sampled[0].x.toFixed(1)},${sampled[0].y.toFixed(1)}`
+
+  for (let i = 0; i < sampled.length - 1; i++) {
+    const p0 = sampled[Math.max(0, i - 1)]
+    const p1 = sampled[i]
+    const p2 = sampled[i + 1]
+    const p3 = sampled[Math.min(sampled.length - 1, i + 2)]
+
+    // Catmull-Rom to cubic bezier control points (alpha = 0.5)
+    const cp1x = p1.x + (p2.x - p0.x) / 6
+    const cp1y = p1.y + (p2.y - p0.y) / 6
+    const cp2x = p2.x - (p3.x - p1.x) / 6
+    const cp2y = p2.y - (p3.y - p1.y) / 6
+
+    d += ` C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`
+  }
+
+  return d
+}
 
 const DEFAULTS: Required<RenderOptions> = {
   width: 400,
@@ -31,12 +74,21 @@ export function renderSvg(
   const drawWidth = opts.width - opts.padding * 2
   const drawHeight = opts.height - opts.padding * 2
 
-  const rangeX = maxX - minX || 1
-  const scaleX = drawWidth / rangeX
+  // Use uniform scaling so lateral proportions are honest.
+  // Scale based on the vertical (distance) axis, then use the same
+  // scale for horizontal. This means a straight disc looks straight
+  // instead of having tiny drift exaggerated to fill the width.
   const scaleY = drawHeight / maxY
+  const scaleX = scaleY // uniform: 1ft lateral = 1ft vertical on screen
+
+  // Center the content horizontally
+  const contentMinX = minX * scaleX
+  const contentMaxX = maxX * scaleX
+  const contentWidth = contentMaxX - contentMinX
+  const offsetX = opts.padding + (drawWidth - contentWidth) / 2 - contentMinX
 
   function toSvgX(x: number): number {
-    return opts.padding + (x - minX) * scaleX
+    return offsetX + x * scaleX
   }
 
   function toSvgY(y: number): number {
@@ -61,12 +113,9 @@ export function renderSvg(
     const color = input.color ?? '#ffffff'
     const lineWidth = input.lineWidth ?? 2.5
 
-    const d = path.points
-      .map((p, i) => {
-        const cmd = i === 0 ? 'M' : 'L'
-        return `${cmd}${toSvgX(p.x).toFixed(1)},${toSvgY(p.y).toFixed(1)}`
-      })
-      .join(' ')
+    // Build smooth SVG path using Catmull-Rom → cubic bezier conversion
+    const svgPts = path.points.map((p) => ({ x: toSvgX(p.x), y: toSvgY(p.y) }))
+    const d = pointsToSmoothPath(svgPts)
 
     svg += `  <path d="${d}" fill="none" stroke="${color}" stroke-width="${lineWidth}" stroke-linecap="round" stroke-linejoin="round" />\n`
 
