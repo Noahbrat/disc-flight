@@ -1,0 +1,243 @@
+"use strict";
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// src/index.ts
+var index_exports = {};
+__export(index_exports, {
+  calculateFlightPath: () => calculateFlightPath,
+  parseDiscSpec: () => parseDiscSpec,
+  renderSvg: () => renderSvg
+});
+module.exports = __toCommonJS(index_exports);
+
+// src/flight.ts
+var SAMPLES = 100;
+function calculateFlightPath(input) {
+  const { speed, glide, turn, fade, hand = "rhbh", armSpeed = "normal" } = input;
+  const mirror = hand === "lhbh" || hand === "rhfh" ? -1 : 1;
+  const armTurnMult = armSpeed === "slow" ? 0.5 : armSpeed === "fast" ? 1.4 : 1;
+  const armFadeMult = armSpeed === "slow" ? 1.3 : armSpeed === "fast" ? 0.8 : 1;
+  const armDistMult = armSpeed === "slow" ? 0.82 : armSpeed === "fast" ? 1.1 : 1;
+  const baseDistance = 150 + speed * 18 + Math.sqrt(speed) * 12;
+  const glideBonus = glide * 10 * (0.5 + speed * 0.04);
+  const distance = (baseDistance + glideBonus) * armDistMult;
+  const lateralBase = distance * 0.028;
+  const absTurn = Math.abs(turn);
+  const turnMag = Math.pow(absTurn, 1.5) * Math.sign(-turn) * armTurnMult * mirror * lateralBase;
+  const fadeMag = Math.pow(fade, 1.5) * armFadeMult * mirror * lateralBase * 1.8;
+  const turnPeak = 0.55 + speed * 0.012;
+  const fadeOnset = 0.72 + speed * 8e-3;
+  const points = [];
+  let lateralPos = 0;
+  const dt = 1 / SAMPLES;
+  for (let i = 0; i <= SAMPLES; i++) {
+    const t = i / SAMPLES;
+    const along = t * distance;
+    let turnVel = 0;
+    if (t <= turnPeak) {
+      const p = t / turnPeak;
+      turnVel = p * p * p;
+    } else {
+      const p = (t - turnPeak) / (1 - turnPeak);
+      turnVel = Math.pow(1 - p, 2);
+    }
+    let fadeVel = 0;
+    if (t > fadeOnset) {
+      const p = (t - fadeOnset) / (1 - fadeOnset);
+      fadeVel = p * p;
+    }
+    const netVel = turnMag * turnVel - fadeMag * fadeVel;
+    if (i > 0) {
+      lateralPos += netVel * dt * 5.8;
+    }
+    points.push({ x: lateralPos, y: along });
+  }
+  const landingPoint = points[points.length - 1];
+  return { points, distance, landingPoint };
+}
+
+// src/render.ts
+function pointsToSmoothPath(pts) {
+  if (pts.length < 2) return "";
+  if (pts.length === 2) {
+    return `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)} L${pts[1].x.toFixed(1)},${pts[1].y.toFixed(1)}`;
+  }
+  const step = Math.max(1, Math.floor(pts.length / 50));
+  const sampled = [];
+  for (let i = 0; i < pts.length; i += step) {
+    sampled.push(pts[i]);
+  }
+  if (sampled[sampled.length - 1] !== pts[pts.length - 1]) {
+    sampled.push(pts[pts.length - 1]);
+  }
+  let d = `M${sampled[0].x.toFixed(1)},${sampled[0].y.toFixed(1)}`;
+  for (let i = 0; i < sampled.length - 1; i++) {
+    const p0 = sampled[Math.max(0, i - 1)];
+    const p1 = sampled[i];
+    const p2 = sampled[i + 1];
+    const p3 = sampled[Math.min(sampled.length - 1, i + 2)];
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+var DEFAULTS = {
+  width: 400,
+  height: 600,
+  padding: 40,
+  showFairway: true,
+  showLabels: true,
+  showLandingZone: true,
+  showGrid: false
+};
+function renderSvg(discs, options = {}) {
+  const opts = { ...DEFAULTS, ...options };
+  const inputs = Array.isArray(discs) ? discs : [discs];
+  const paths = inputs.map((input) => ({
+    input,
+    path: calculateFlightPath(input)
+  }));
+  const allPoints = paths.flatMap((p) => p.path.points);
+  const minX = Math.min(...allPoints.map((p) => p.x));
+  const maxX = Math.max(...allPoints.map((p) => p.x));
+  const maxY = Math.max(...allPoints.map((p) => p.y));
+  const drawWidth = opts.width - opts.padding * 2;
+  const drawHeight = opts.height - opts.padding * 2;
+  const scaleY = drawHeight / maxY;
+  const scaleX = scaleY;
+  const contentMinX = minX * scaleX;
+  const contentMaxX = maxX * scaleX;
+  const contentWidth = contentMaxX - contentMinX;
+  const offsetX = opts.padding + (drawWidth - contentWidth) / 2 - contentMinX;
+  function toSvgX(x) {
+    return offsetX + x * scaleX;
+  }
+  function toSvgY(y) {
+    return opts.height - opts.padding - y * scaleY;
+  }
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${opts.width} ${opts.height}" width="${opts.width}" height="${opts.height}">
+`;
+  if (opts.showFairway) {
+    svg += `  <rect width="${opts.width}" height="${opts.height}" fill="#1a472a" rx="8" />
+`;
+  }
+  if (opts.showGrid) {
+    const gridIntervals = [25, 50, 100, 150, 200];
+    let gridStep = 50;
+    for (const interval of gridIntervals) {
+      const lineCount = Math.floor(maxY / interval);
+      if (lineCount >= 3 && lineCount <= 10) {
+        gridStep = interval;
+        break;
+      }
+    }
+    const gridColor = opts.showFairway ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)";
+    const labelColor = opts.showFairway ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)";
+    for (let dist = 0; dist <= maxY; dist += gridStep) {
+      const y = toSvgY(dist);
+      svg += `  <line x1="${opts.padding}" y1="${y}" x2="${opts.width - opts.padding}" y2="${y}" stroke="${gridColor}" stroke-width="0.75" />
+`;
+      svg += `  <text x="${opts.padding - 4}" y="${y + 4}" fill="${labelColor}" font-family="sans-serif" font-size="10" text-anchor="end">${dist}ft</text>
+`;
+    }
+    const centerX = 0;
+    for (let xFt = -gridStep; toSvgX(centerX + xFt) >= opts.padding; xFt -= gridStep) {
+      const x = toSvgX(centerX + xFt);
+      svg += `  <line x1="${x}" y1="${opts.padding}" x2="${x}" y2="${opts.height - opts.padding}" stroke="${gridColor}" stroke-width="0.75" />
+`;
+    }
+    for (let xFt = gridStep; toSvgX(centerX + xFt) <= opts.width - opts.padding; xFt += gridStep) {
+      const x = toSvgX(centerX + xFt);
+      svg += `  <line x1="${x}" y1="${opts.padding}" x2="${x}" y2="${opts.height - opts.padding}" stroke="${gridColor}" stroke-width="0.75" />
+`;
+    }
+    const cx = toSvgX(0);
+    svg += `  <line x1="${cx}" y1="${opts.padding}" x2="${cx}" y2="${opts.height - opts.padding}" stroke="${gridColor}" stroke-width="0.75" />
+`;
+  }
+  const teeX = toSvgX(0);
+  const teeY = toSvgY(0);
+  svg += `  <rect x="${teeX - 8}" y="${teeY - 3}" width="16" height="6" fill="#888" rx="1" />
+`;
+  for (const { input, path } of paths) {
+    const color = input.color ?? "#ffffff";
+    const lineWidth = input.lineWidth ?? 2.5;
+    const svgPts = path.points.map((p) => ({ x: toSvgX(p.x), y: toSvgY(p.y) }));
+    const d = pointsToSmoothPath(svgPts);
+    svg += `  <path d="${d}" fill="none" stroke="${color}" stroke-width="${lineWidth}" stroke-linecap="round" stroke-linejoin="round" />
+`;
+  }
+  for (const { input, path } of paths) {
+    const color = input.color ?? "#ffffff";
+    if (opts.showLandingZone) {
+      const lx = toSvgX(path.landingPoint.x);
+      const ly = toSvgY(path.landingPoint.y);
+      svg += `  <line x1="${lx - 4}" y1="${ly - 4}" x2="${lx + 4}" y2="${ly + 4}" stroke="${color}" stroke-width="2" />
+`;
+      svg += `  <line x1="${lx + 4}" y1="${ly - 4}" x2="${lx - 4}" y2="${ly + 4}" stroke="${color}" stroke-width="2" />
+`;
+    }
+    if (opts.showLabels && input.label) {
+      const lx = toSvgX(path.landingPoint.x);
+      const ly = toSvgY(path.landingPoint.y) - 10;
+      svg += `  <text x="${lx}" y="${ly}" fill="${color}" font-family="sans-serif" font-size="12" text-anchor="middle">${input.label}</text>
+`;
+    }
+  }
+  svg += `</svg>`;
+  return svg;
+}
+
+// src/parse.ts
+var FLIGHT_NUMBER_RE = /^-?\d+\/\d+\/-?\d+\/\d+$/;
+function parseDiscSpec(spec) {
+  const discs = spec.split(",").map((s) => s.trim()).filter(Boolean);
+  if (discs.length === 0) {
+    throw new Error("No disc specs provided");
+  }
+  return discs.map((discStr) => {
+    const parts = discStr.split(":");
+    const flightIdx = parts.findIndex((p) => FLIGHT_NUMBER_RE.test(p));
+    if (flightIdx === -1) {
+      throw new Error(`Invalid disc spec "${discStr}" \u2014 no flight numbers found (expected Speed/Glide/Turn/Fade)`);
+    }
+    const [speedStr, glideStr, turnStr, fadeStr] = parts[flightIdx].split("/");
+    const label = flightIdx > 0 ? parts.slice(0, flightIdx).join(":") : void 0;
+    const color = flightIdx < parts.length - 1 ? parts[flightIdx + 1] : void 0;
+    const input = {
+      speed: Number(speedStr),
+      glide: Number(glideStr),
+      turn: Number(turnStr),
+      fade: Number(fadeStr)
+    };
+    if (label) input.label = label;
+    if (color) input.color = color;
+    return input;
+  });
+}
+// Annotate the CommonJS export names for ESM import in node:
+0 && (module.exports = {
+  calculateFlightPath,
+  parseDiscSpec,
+  renderSvg
+});
+//# sourceMappingURL=index.cjs.map
