@@ -1,6 +1,6 @@
 {
   "name": "disc-flight",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Disc golf flight path visualization engine. Takes flight numbers (speed/glide/turn/fade) and outputs beautiful flight path graphics.",
   "type": "module",
   "main": "./dist/index.cjs",
