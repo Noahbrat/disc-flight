@@ -21,9 +21,16 @@ export function calculateFlightPath(input: FlightInput): FlightPath {
   // --- Lateral movement scaling ---
   const lateralBase = distance * 0.028
 
-  const absTurn = Math.abs(turn)
-  const turnMag = Math.pow(absTurn, 1.5) * Math.sign(-turn) * armTurnMult * mirror * lateralBase
-  const fadeMag = Math.pow(fade, 1.5) * armFadeMult * mirror * lateralBase * 1.8
+  // Split turn: negative = understable (rightward bell curve), positive = overstable (earlier fade)
+  const negativeTurn = Math.min(turn, 0)
+  const positiveTurn = Math.max(turn, 0)
+
+  const absTurn = Math.abs(negativeTurn)
+  const turnMag = Math.pow(absTurn, 1.5) * armTurnMult * mirror * lateralBase
+
+  const baseFadeMag = Math.pow(fade, 1.5) * armFadeMult * mirror * lateralBase * 1.8
+  const turnFadeBoost = Math.pow(positiveTurn, 1.5) * armFadeMult * mirror * lateralBase * 1.8
+  const fadeMag = baseFadeMag + turnFadeBoost
 
   // --- Velocity-based model ---
   // Instead of modeling position with separate phases that can create
@@ -43,7 +50,8 @@ export function calculateFlightPath(input: FlightInput): FlightPath {
   // Fade velocity: ramps up from zero, accelerating to the end
 
   const turnPeak = 0.55 + speed * 0.012   // where turn velocity peaks
-  const fadeOnset = 0.72 + speed * 0.008   // where fade velocity starts
+  const baseFadeOnset = 0.72 + speed * 0.008
+  const fadeOnset = Math.max(0.2, baseFadeOnset - positiveTurn * 0.15) // positive turn = earlier fade
 
   // Precompute by integrating velocity to get position
   const points: Point[] = []
